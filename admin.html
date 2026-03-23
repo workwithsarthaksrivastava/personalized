@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — Personalized Gift Shop</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0A1628; --surface: #111E35; --surface2: #162540; --surface3: #1c2e4a;
+  --gold: #C9A84C; --gold-light: #E8D08A; --gold-dim: rgba(201,168,76,0.12);
+  --teal: #4CA8B4; --white: #F9F7F3; --muted: #8A99B0; --border: #1E2E47;
+  --error: #E05252; --success: #52B788; --warn: #E89C4C;
+  --sidebar-w: 240px;
+  --transition: all 0.24s cubic-bezier(0.4,0,0.2,1);
+  --radius-sm:6px; --radius-md:12px; --radius-lg:18px; --radius-full:9999px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);overflow-x:hidden;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* ── LAYOUT ── */
+#app{display:flex;min-height:100vh;}
+#sidebar{
+  width:var(--sidebar-w);flex-shrink:0;
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;bottom:0;z-index:100;
+  transition:transform 0.3s ease;
+}
+#main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh;}
+#topbar{
+  height:64px;padding:0 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  background:rgba(10,22,40,0.95);backdrop-filter:blur(12px);
+  position:sticky;top:0;z-index:50;
+}
+#content{padding:28px;flex:1;}
+
+/* ── SIDEBAR ── */
+.sidebar-logo{
+  padding:24px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.sidebar-logo-text{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;color:var(--gold);line-height:1.2;}
+.sidebar-logo-sub{font-size:0.7rem;color:var(--muted);margin-top:2px;font-family:'DM Sans',sans-serif;font-weight:400;}
+.sidebar-nav{flex:1;padding:16px 0;overflow-y:auto;}
+.nav-section-label{font-size:0.65rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);padding:8px 20px 4px;}
+.nav-item{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 20px;cursor:pointer;
+  color:var(--muted);font-size:0.875rem;font-weight:500;
+  border-left:3px solid transparent;
+  transition:var(--transition);
+  user-select:none;
+}
+.nav-item:hover{color:var(--white);background:var(--surface2);}
+.nav-item.active{color:var(--gold);background:var(--gold-dim);border-left-color:var(--gold);}
+.nav-icon{font-size:1.1rem;width:22px;text-align:center;}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);}
+.admin-user{display:flex;align-items:center;gap:10px;}
+.admin-avatar{width:32px;height:32px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:var(--bg);}
+.admin-name{font-size:0.8rem;font-weight:600;}
+.admin-role{font-size:0.7rem;color:var(--muted);}
+
+/* ── TOPBAR ── */
+.topbar-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:600;}
+.topbar-actions{display:flex;align-items:center;gap:12px;}
+.topbar-badge{background:var(--gold-dim);border:1px solid rgba(201,168,76,0.3);color:var(--gold);padding:4px 12px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:600;}
+
+/* ── PANELS ── */
+.panel{display:none;animation:panelIn 0.2s ease;}
+.panel.active{display:block;}
+@keyframes panelIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── STAT CARDS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px;}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:22px;position:relative;overflow:hidden;transition:var(--transition);
+}
+.stat-card:hover{border-color:rgba(201,168,76,0.25);}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent);}
+.stat-icon{font-size:1.6rem;margin-bottom:12px;}
+.stat-value{font-size:1.8rem;font-weight:700;font-family:'Cormorant Garamond',serif;color:var(--white);}
+.stat-label{color:var(--muted);font-size:0.8rem;margin-top:4px;}
+.stat-delta{font-size:0.75rem;font-weight:600;margin-top:6px;}
+.delta-up{color:var(--success);}
+.delta-down{color:var(--error);}
+
+/* ── CHARTS (CSS-only bars) ── */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:24px;margin-bottom:20px;}
+.chart-title{font-size:0.875rem;font-weight:600;color:var(--muted);margin-bottom:20px;text-transform:uppercase;letter-spacing:0.08em;}
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:160px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.bar{width:100%;background:linear-gradient(180deg,var(--gold),rgba(201,168,76,0.4));border-radius:4px 4px 0 0;transition:height 0.6s ease;min-height:4px;}
+.bar-label{font-size:0.7rem;color:var(--muted);}
+.bar-val{font-size:0.7rem;color:var(--gold);font-weight:600;}
+.donut-wrap{display:flex;align-items:center;gap:32px;}
+.donut{position:relative;width:120px;height:120px;flex-shrink:0;}
+.donut svg{transform:rotate(-90deg);}
+.donut-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.donut-label span{font-size:1.4rem;font-weight:700;color:var(--gold);}
+.donut-label small{font-size:0.65rem;color:var(--muted);}
+.legend{display:flex;flex-direction:column;gap:10px;}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:0.8rem;}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* ── TABLES ── */
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;}
+.table-header{padding:18px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px;}
+.table-header h3{font-size:1rem;font-weight:600;}
+.search-input{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.875rem;outline:none;width:220px;transition:var(--transition);}
+.search-input:focus{border-color:var(--gold);}
+.search-input::placeholder{color:var(--muted);}
+table{width:100%;border-collapse:collapse;}
+th{padding:11px 16px;text-align:left;font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);}
+td{padding:13px 16px;font-size:0.875rem;border-bottom:1px solid rgba(30,46,71,0.5);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tbody tr{transition:var(--transition);cursor:pointer;}
+tbody tr:hover{background:var(--surface2);}
+.table-loading{padding:48px;text-align:center;color:var(--muted);}
+
+/* ── BADGES ── */
+.badge{padding:3px 10px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;display:inline-block;white-space:nowrap;}
+.badge-pending{background:rgba(201,168,76,0.15);color:var(--gold);}
+.badge-design_review,.badge-printing{background:rgba(76,168,180,0.15);color:var(--teal);}
+.badge-packed,.badge-out_for_delivery{background:rgba(82,183,136,0.15);color:var(--success);}
+.badge-delivered{background:rgba(82,183,136,0.2);color:var(--success);}
+.badge-cancelled{background:rgba(224,82,82,0.15);color:var(--error);}
+.badge-active{background:rgba(82,183,136,0.15);color:var(--success);}
+.badge-inactive{background:rgba(138,153,176,0.15);color:var(--muted);}
+.badge-admin{background:rgba(201,168,76,0.2);color:var(--gold);}
+.badge-customer{background:rgba(76,168,180,0.1);color:var(--teal);}
+
+/* ── ACTION BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:var(--transition);}
+.btn-gold{background:var(--gold);color:var(--bg);}
+.btn-gold:hover{background:var(--gold-light);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-danger{background:rgba(224,82,82,0.15);color:var(--error);border:1px solid rgba(224,82,82,0.3);}
+.btn-danger:hover{background:rgba(224,82,82,0.25);}
+.btn-sm{padding:5px 10px;font-size:0.75rem;}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:modalIn 0.25s ease;}
+@keyframes modalIn{from{transform:scale(0.95);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-hd{padding:22px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.modal-hd h3{font-size:1rem;font-weight:700;}
+.modal-bd{padding:24px;}
+.modal-ft{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+.close-btn{background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;}
+
+/* ── FORM ELEMENTS ── */
+.form-group{margin-bottom:16px;}
+label{display:block;font-size:0.75rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+input,select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.875rem;outline:none;transition:var(--transition);}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,0.08);}
+select option{background:var(--surface2);}
+textarea{resize:vertical;min-height:90px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+/* ── PRODUCT GRID (admin) ── */
+.product-grid-admin{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+.product-card-admin{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;transition:var(--transition);}
+.product-card-admin:hover{border-color:rgba(201,168,76,0.3);}
+.product-card-img{width:100%;aspect-ratio:4/3;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:3rem;overflow:hidden;}
+.product-card-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.4s ease;display:block;}
+.product-card-admin:hover .product-card-img img{transform:scale(1.06);}
+.product-card-body{padding:16px;}
+.product-card-name{font-weight:600;margin-bottom:4px;font-size:0.9rem;}
+.product-card-price{color:var(--gold);font-weight:600;font-size:0.875rem;margin-bottom:12px;}
+.product-card-actions{display:flex;gap:8px;}
+.toggle-stock{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;font-size:0.75rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:var(--transition);color:var(--muted);}
+.toggle-stock:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;bottom:20px;left:20px;z-index:1000;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;display:flex;align-items:center;gap:10px;font-size:0.875rem;animation:slideUp 0.3s ease;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+.toast.success{border-color:var(--success);}
+.toast.error{border-color:var(--error);}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ── LOGIN SCREEN ── */
+#loginScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200;}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px;width:360px;}
+.login-logo{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600;color:var(--gold);text-align:center;margin-bottom:4px;}
+.login-sub{color:var(--muted);font-size:0.8rem;text-align:center;margin-bottom:28px;}
+.login-btn{width:100%;padding:13px;background:var(--gold);color:var(--bg);border:none;border-radius:var(--radius-md);font-weight:700;font-size:0.95rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:var(--transition);margin-top:8px;}
+.login-btn:hover{background:var(--gold-light);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  #sidebar{transform:translateX(-100%);}
+  #sidebar.open{transform:translateX(0);}
+  #main{margin-left:0;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .form-row{grid-template-columns:1fr;}
+  .search-input{width:140px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">☀ Admin Panel</div>
+    <div class="login-sub">Personalized Gift Shop · Surya Film Services</div>
+    <div class="form-group"><label>Admin Email</label><input type="email" id="adminEmail" placeholder="Rajesh@pgs.local" autocomplete="username"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="adminPass" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="login-btn" id="loginBtn" onclick="adminLogin()">Login to Admin →</button>
+    <p id="loginErr" style="color:var(--error);font-size:0.8rem;text-align:center;margin-top:10px;display:none"></p>
+    <div style="margin-top:20px;padding:14px;background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:8px;font-size:0.78rem;color:var(--muted);text-align:center;line-height:1.6">
+      🔑 <strong style="color:var(--gold)">Login:</strong> Rajesh@pgs.local<br>
+      🔒 <strong style="color:var(--gold)">Password:</strong> Rajesh@123
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <span style="font-size:1.5rem">☀</span>
+      <div>
+        <div class="sidebar-logo-text">Gift Shop</div>
+        <div class="sidebar-logo-sub">Admin Panel</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <div class="nav-item active" onclick="switchPanel('dashboard')"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-section-label">Commerce</div>
+      <div class="nav-item" onclick="switchPanel('orders')"><span class="nav-icon">📦</span> Orders <span id="pendingBadge" style="margin-left:auto;background:var(--gold);color:var(--bg);font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:var(--radius-full);display:none">0</span></div>
+      <div class="nav-item" onclick="switchPanel('products')"><span class="nav-icon">🎁</span> Products</div>
+      <div class="nav-section-label">People</div>
+      <div class="nav-item" onclick="switchPanel('customers')"><span class="nav-icon">👥</span> Customers</div>
+      <div class="nav-item" onclick="switchPanel('messages')"><span class="nav-icon">✉</span> Messages <span id="unreadBadge" style="margin-left:auto;background:var(--teal);color:var(--bg);font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:var(--radius-full);display:none">0</span></div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="admin-user">
+        <div class="admin-avatar" id="adminAvatar">A</div>
+        <div>
+          <div class="admin-name" id="adminNameDisplay">Admin</div>
+          <div class="admin-role">Administrator</div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="adminLogout()" title="Logout">⇤</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main id="main">
+    <div id="topbar">
+      <div class="topbar-title" id="topbarTitle">Dashboard</div>
+      <div class="topbar-actions">
+        <span class="topbar-badge" id="topbarDate"></span>
+        <button class="btn btn-gold" id="topbarAction" style="display:none" onclick="openAddProduct()">+ Add Product</button>
+      </div>
+    </div>
+    <div id="content">
+
+      <!-- ══ DASHBOARD ══ -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-value" id="s-orders">—</div><div class="stat-label">Total Orders</div></div>
+          <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-value" id="s-pending">—</div><div class="stat-label">Pending Orders</div></div>
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="s-revenue">—</div><div class="stat-label">Total Revenue</div></div>
+          <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="s-customers">—</div><div class="stat-label">Customers</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;flex-wrap:wrap">
+          <div class="chart-card">
+            <div class="chart-title">Revenue (Last 7 Days)</div>
+            <div class="bar-chart" id="revenueChart"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Orders by Status</div>
+            <div class="donut-wrap">
+              <div class="donut">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="var(--border)" stroke-width="16"/>
+                  <circle id="donutArc" cx="60" cy="60" r="48" fill="none" stroke="var(--gold)" stroke-width="16" stroke-dasharray="0 302" stroke-linecap="round"/>
+                </svg>
+                <div class="donut-label"><span id="donutVal">0%</span><small>Delivered</small></div>
+              </div>
+              <div class="legend" id="statusLegend"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-card" style="margin-top:20px">
+          <div class="table-header"><h3>Recent Orders</h3><button class="btn btn-outline btn-sm" onclick="switchPanel('orders')">View All →</button></div>
+          <div style="overflow-x:auto"><table><thead><tr><th>Order #</th><th>Customer</th><th>Total</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentOrdersTbl"><tr><td colspan="5" class="table-loading">Loading...</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══ ORDERS ══ -->
+      <div class="panel" id="panel-orders">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+          <button class="btn btn-outline btn-sm" id="filterAll" onclick="filterOrders('all',this)">All</button>
+          <button class="btn btn-outline btn-sm" onclick="filterOrders('pending',this)">⏳ Pending</button>
+          <button class="btn btn-outline btn-sm" onclick="filterOrders('design_review',this)">🎨 Design Review</button>
+          <button class="btn btn-outline btn-sm" onclick="filterOrders('printing',this)">🖨 Printing</button>
+          <button class="btn btn-outline btn-sm" onclick="filterOrders('packed',this)">📦 Packed</button>
+          <button class="btn btn-outline btn-sm" onclick="filterOrders('out_for_delivery',this)">🚚 Out for Delivery</button>
+          <button class="btn btn-outline btn-sm" onclick="filterOrders('delivered',this)">✅ Delivered</button>
+        </div>
+        <div class="table-card">
+          <div class="table-header">
+            <h3>All Orders</h3>
+            <input class="search-input" placeholder="🔍 Search order / phone..." oninput="searchOrders(this.value)">
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Order #</th><th>Customer</th><th>Phone</th><th>Items</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody id="ordersTbl"><tr><td colspan="8" class="table-loading">Loading orders...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PRODUCTS ══ -->
+      <div class="panel" id="panel-products">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+          <button class="btn btn-outline btn-sm" onclick="filterProducts('all',this)">All</button>
+          <button class="btn btn-outline btn-sm" onclick="filterProducts('album',this)">📷 Albums</button>
+          <button class="btn btn-outline btn-sm" onclick="filterProducts('frame',this)">🖼 Frames</button>
+          <button class="btn btn-outline btn-sm" onclick="filterProducts('uv_print',this)">✨ UV Print</button>
+          <button class="btn btn-outline btn-sm" onclick="filterProducts('sublimation',this)">👕 Sublimation</button>
+        </div>
+        <div class="product-grid-admin" id="productsGrid"><div class="table-loading">Loading products...</div></div>
+      </div>
+
+      <!-- ══ CUSTOMERS ══ -->
+      <div class="panel" id="panel-customers">
+        <div class="table-card">
+          <div class="table-header">
+            <h3>All Customers</h3>
+            <input class="search-input" placeholder="🔍 Search name / email..." oninput="searchCustomers(this.value)">
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Joined</th><th>Orders</th><th>Actions</th></tr></thead>
+              <tbody id="customersTbl"><tr><td colspan="7" class="table-loading">Loading customers...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MESSAGES ══ -->
+      <div class="panel" id="panel-messages">
+        <div class="table-card">
+          <div class="table-header"><h3>Contact Messages</h3></div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Name</th><th>Phone</th><th>Service</th><th>Message</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody id="messagesTbl"><tr><td colspan="6" class="table-loading">Loading messages...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ORDER STATUS MODAL -->
+<div class="overlay" id="orderModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3>📦 Update Order</h3>
+      <button class="close-btn" onclick="closeModal('orderModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px" id="orderModalSub"></p>
+      <div class="form-group">
+        <label>Update Status</label>
+        <select id="orderStatusSel">
+          <option value="pending">⏳ Pending</option>
+          <option value="design_review">🎨 Design Review</option>
+          <option value="printing">🖨 Printing in Progress</option>
+          <option value="packed">📦 Packed & Ready</option>
+          <option value="out_for_delivery">🚚 Out for Delivery</option>
+          <option value="delivered">✅ Delivered</option>
+          <option value="cancelled">❌ Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Note for Customer (optional)</label>
+        <textarea id="orderStatusNote" placeholder="eg: Your order has been dispatched via DTDC. Tracking: XXXX"></textarea>
+      </div>
+      <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-top:8px">
+        <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:8px">Order Items</div>
+        <div id="orderModalItems" style="font-size:0.85rem;color:var(--white)"></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('orderModal')">Cancel</button>
+      <a id="waNotifyLink" href="#" target="_blank" class="btn btn-outline">💬 WhatsApp Customer</a>
+      <button class="btn btn-gold" onclick="saveOrderStatus()">Save Status →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT PRODUCT MODAL -->
+<div class="overlay" id="productModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3 id="productModalTitle">➕ Add Product</h3>
+      <button class="close-btn" onclick="closeModal('productModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="form-row">
+        <div class="form-group"><label>Product Name *</label><input id="pName" placeholder="eg: 3MM Acrylic Frame"></div>
+        <div class="form-group"><label>Icon (emoji)</label><input id="pIcon" placeholder="🖼" maxlength="4"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category *</label>
+          <select id="pCategory">
+            <option value="album">Album</option>
+            <option value="frame">Photo Frame</option>
+            <option value="uv_print">UV Print</option>
+            <option value="sublimation">Sublimation</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Base Price (₹) *</label><input type="number" id="pPrice" placeholder="525"></div>
+      </div>
+      <div class="form-group"><label>Description</label><textarea id="pDesc" placeholder="Short product description..."></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Stock</label><input type="number" id="pStock" placeholder="100"></div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="pActive"><option value="true">Active (Visible)</option><option value="false">Inactive (Hidden)</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="closeModal('productModal')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveProduct()">Save Product →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script type="module">
+// ══════════════════════════════════════════════════════════
+// CONFIG — replace with your Supabase project values
+// ══════════════════════════════════════════════════════════
+const SUPABASE_URL      = 'https://YOUR_PROJECT_ID.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── State ──────────────────────────────────────────────────
+let adminUser    = null;
+let allOrders    = [];
+let allProducts  = [];
+let allCustomers = [];
+let currentOrderId = null;
+let editingProductId = null;
+let currentFilter = 'all';
+
+// ── Boot ───────────────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+    if (profile?.role === 'admin') {
+      bootAdmin(profile);
+    } else {
+      document.getElementById('loginErr').textContent = 'Access denied. Not an admin account.';
+      document.getElementById('loginErr').style.display = 'block';
+    }
+  }
+  document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+})();
+
+// ── Admin Login ────────────────────────────────────────────
+window.adminLogin = async function() {
+  const email = document.getElementById('adminEmail').value.trim();
+  const pass  = document.getElementById('adminPass').value;
+  const btn   = document.getElementById('loginBtn');
+  btn.textContent = 'Logging in...'; btn.disabled = true;
+
+  const { data: { session }, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    btn.textContent = 'Login to Admin →'; btn.disabled = false;
+    document.getElementById('loginErr').textContent = error.message;
+    document.getElementById('loginErr').style.display = 'block';
+    return;
+  }
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+  if (!profile || profile.role !== 'admin') {
+    await sb.auth.signOut();
+    document.getElementById('loginErr').textContent = 'Access denied. Contact owner to grant admin access.';
+    document.getElementById('loginErr').style.display = 'block';
+    btn.textContent = 'Login to Admin →'; btn.disabled = false;
+    return;
+  }
+  bootAdmin(profile);
+};
+
+function bootAdmin(profile) {
+  adminUser = profile;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('adminNameDisplay').textContent = profile.full_name || 'Admin';
+  document.getElementById('adminAvatar').textContent = (profile.full_name || 'A')[0].toUpperCase();
+  loadDashboard();
+}
+
+window.adminLogout = async function() {
+  await sb.auth.signOut();
+  location.reload();
+};
+
+// ── Panel switching ────────────────────────────────────────
+window.switchPanel = function(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+
+  // Activate sidebar nav
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.toLowerCase().includes(name.slice(0,4))) n.classList.add('active');
+  });
+
+  const titles = { dashboard:'Dashboard', orders:'Orders', products:'Products', customers:'Customers', messages:'Messages' };
+  document.getElementById('topbarTitle').textContent = titles[name] || name;
+  document.getElementById('topbarAction').style.display = name === 'products' ? 'flex' : 'none';
+
+  if (name === 'dashboard')  loadDashboard();
+  if (name === 'orders')     loadOrders();
+  if (name === 'products')   loadProducts();
+  if (name === 'customers')  loadCustomers();
+  if (name === 'messages')   loadMessages();
+};
+
+// ── DASHBOARD ─────────────────────────────────────────────
+async function loadDashboard() {
+  // Stats
+  const [{ count: totalOrders }, { count: pendingOrders }, { count: customers }] = await Promise.all([
+    sb.from('orders').select('*', {count:'exact', head:true}),
+    sb.from('orders').select('*', {count:'exact', head:true}).eq('status','pending'),
+    sb.from('profiles').select('*', {count:'exact', head:true}).eq('role','customer'),
+  ]);
+  const { data: revData } = await sb.from('orders').select('total').neq('status','cancelled');
+  const revenue = (revData || []).reduce((s, o) => s + Number(o.total), 0);
+
+  document.getElementById('s-orders').textContent    = totalOrders || 0;
+  document.getElementById('s-pending').textContent   = pendingOrders || 0;
+  document.getElementById('s-revenue').textContent   = '₹' + (revenue/1000).toFixed(1) + 'k';
+  document.getElementById('s-customers').textContent = customers || 0;
+
+  // Pending badge
+  if (pendingOrders > 0) {
+    const b = document.getElementById('pendingBadge');
+    b.textContent = pendingOrders; b.style.display = 'inline';
+  }
+
+  // Revenue chart (last 7 days)
+  const days = Array.from({length:7}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate()-6+i); return d;
+  });
+  const { data: recent } = await sb.from('orders')
+    .select('total,created_at')
+    .gte('created_at', days[0].toISOString())
+    .neq('status','cancelled');
+
+  const dayRevs = days.map(d => {
+    const ds = d.toISOString().slice(0,10);
+    return { label: d.toLocaleDateString('en-IN',{weekday:'short'}), val: (recent||[]).filter(o => o.created_at.slice(0,10)===ds).reduce((s,o)=>s+Number(o.total),0) };
+  });
+  const maxRev = Math.max(...dayRevs.map(d=>d.val), 1);
+  document.getElementById('revenueChart').innerHTML = dayRevs.map(d => `
+    <div class="bar-col">
+      <div class="bar-val">${d.val > 0 ? '₹'+(d.val/1000).toFixed(1)+'k' : ''}</div>
+      <div class="bar" style="height:${Math.max(4, (d.val/maxRev)*140)}px"></div>
+      <div class="bar-label">${d.label}</div>
+    </div>
+  `).join('');
+
+  // Status donut
+  const { data: statuses } = await sb.from('orders').select('status');
+  const statusCounts = {};
+  (statuses||[]).forEach(o => { statusCounts[o.status] = (statusCounts[o.status]||0)+1; });
+  const total = Object.values(statusCounts).reduce((a,b)=>a+b,0) || 1;
+  const delivered = statusCounts.delivered || 0;
+  const pct = Math.round((delivered/total)*100);
+  const circumference = 2 * Math.PI * 48;
+  document.getElementById('donutArc').style.strokeDasharray = `${(pct/100)*circumference} ${circumference}`;
+  document.getElementById('donutVal').textContent = pct + '%';
+  const colors = {pending:'var(--gold)',design_review:'var(--teal)',printing:'#4a90e2',packed:'#9b59b6',out_for_delivery:'var(--warn)',delivered:'var(--success)',cancelled:'var(--error)'};
+  document.getElementById('statusLegend').innerHTML = Object.entries(statusCounts).map(([s,c]) => `
+    <div class="legend-item"><div class="legend-dot" style="background:${colors[s]||'var(--muted)'}"></div><span>${statusLabel(s)}: <b>${c}</b></span></div>
+  `).join('');
+
+  // Recent orders
+  const { data: recentOrders } = await sb.from('orders').select('*').order('created_at',{ascending:false}).limit(6);
+  document.getElementById('recentOrdersTbl').innerHTML = (recentOrders||[]).map(o => `
+    <tr onclick="openOrderModal('${o.id}')">
+      <td style="font-weight:600">${o.order_number}</td>
+      <td>${o.customer_name}</td>
+      <td style="color:var(--gold);font-weight:600">₹${Number(o.total).toLocaleString('en-IN')}</td>
+      <td><span class="badge badge-${o.status}">${statusLabel(o.status)}</span></td>
+      <td style="color:var(--muted)">${fmtDate(o.created_at)}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" class="table-loading">No orders yet.</td></tr>';
+
+  // Unread messages badge
+  const { count: unread } = await sb.from('contact_messages').select('*',{count:'exact',head:true}).eq('is_read',false);
+  if (unread > 0) { const b=document.getElementById('unreadBadge'); b.textContent=unread; b.style.display='inline'; }
+}
+
+// ── ORDERS ────────────────────────────────────────────────
+async function loadOrders() {
+  const { data } = await sb.from('orders').select('*, order_items(*)').order('created_at',{ascending:false});
+  allOrders = data || [];
+  renderOrders(allOrders);
+}
+
+function renderOrders(orders) {
+  const filtered = currentFilter === 'all' ? orders : orders.filter(o => o.status === currentFilter);
+  document.getElementById('ordersTbl').innerHTML = filtered.map(o => `
+    <tr onclick="openOrderModal('${o.id}')">
+      <td style="font-weight:700;color:var(--gold)">${o.order_number}</td>
+      <td>${o.customer_name}</td>
+      <td><a href="tel:${o.customer_phone}" style="color:var(--teal)" onclick="event.stopPropagation()">${o.customer_phone}</a></td>
+      <td style="color:var(--muted)">${(o.order_items||[]).length} item(s)</td>
+      <td style="font-weight:600">₹${Number(o.total).toLocaleString('en-IN')}</td>
+      <td><span class="badge badge-${o.status}">${statusLabel(o.status)}</span></td>
+      <td style="color:var(--muted)">${fmtDate(o.created_at)}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-outline btn-sm" onclick="openOrderModal('${o.id}')">Edit</button>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" class="table-loading">No orders found.</td></tr>';
+}
+
+window.filterOrders = function(status, btn) {
+  currentFilter = status;
+  document.querySelectorAll('#panel-orders .btn').forEach(b => b.classList.remove('btn-gold'));
+  btn.classList.add('btn-gold');
+  renderOrders(allOrders);
+};
+
+window.searchOrders = function(q) {
+  const lower = q.toLowerCase();
+  const filtered = allOrders.filter(o =>
+    o.order_number.toLowerCase().includes(lower) ||
+    o.customer_name.toLowerCase().includes(lower) ||
+    (o.customer_phone || '').includes(lower)
+  );
+  renderOrders(filtered);
+};
+
+window.openOrderModal = async function(orderId) {
+  currentOrderId = orderId;
+  const o = allOrders.find(o => o.id === orderId);
+  if (!o) return;
+  document.getElementById('orderModalSub').textContent = `${o.order_number} · ${o.customer_name} · ${o.customer_phone}`;
+  document.getElementById('orderStatusSel').value = o.status;
+  document.getElementById('orderStatusNote').value = o.status_note || '';
+  document.getElementById('orderModalItems').innerHTML = (o.order_items || []).map(i =>
+    `<div style="padding:4px 0;border-bottom:1px solid var(--border)">${i.product_icon||'📦'} ${i.product_name} ×${i.quantity} — ₹${Number(i.unit_price).toLocaleString('en-IN')}</div>`
+  ).join('') || '<div style="color:var(--muted)">No items data</div>';
+  const waMsg = encodeURIComponent(`Hello ${o.customer_name}! Your order ${o.order_number} status has been updated. Check your order status at personalizedgiftshop.in/track`);
+  document.getElementById('waNotifyLink').href = `https://wa.me/${(o.customer_phone||'').replace(/\D/g,'')}?text=${waMsg}`;
+  document.getElementById('orderModal').classList.add('open');
+};
+
+window.saveOrderStatus = async function() {
+  const status = document.getElementById('orderStatusSel').value;
+  const note   = document.getElementById('orderStatusNote').value.trim();
+  const { error } = await sb.from('orders').update({ status, status_note: note }).eq('id', currentOrderId);
+  if (error) { toast('❌', error.message, 'error'); return; }
+  toast('✅', 'Order status updated!', 'success');
+  closeModal('orderModal');
+  loadOrders();
+  loadDashboard();
+};
+
+// ── Product image map (same as main site) ─────────────────
+const PRODUCT_IMAGES = {
+  '2MM Acrylic Frame':       'https://picsum.photos/seed/acrylic2mm/600/450',
+  '3MM Acrylic Frame':       'https://picsum.photos/seed/acrylic3mm/600/450',
+  '5MM Acrylic Frame':       'https://picsum.photos/seed/acrylic5mm/600/450',
+  'Slim LED Frame':          'https://picsum.photos/seed/ledslim/600/450',
+  'Molding LED Frame':       'https://picsum.photos/seed/ledmold/600/450',
+  'Wooden Print Frame':      'https://picsum.photos/seed/woodframe/600/450',
+  'Matt Lamination Frame':   'https://picsum.photos/seed/mattframe/600/450',
+  'Floating Shadow Frame':   'https://picsum.photos/seed/floatframe/600/450',
+  'Classic Wedding Album':   'https://picsum.photos/seed/weddingalbum/600/450',
+  'Birthday Album':          'https://picsum.photos/seed/bdayalbum/600/450',
+  'Graduation Album':        'https://picsum.photos/seed/gradalbum/600/450',
+  'Corporate Event Album':   'https://picsum.photos/seed/corpalbum/600/450',
+  'Baby Album':              'https://picsum.photos/seed/babyalbum/600/450',
+  'Custom Cover Album':      'https://picsum.photos/seed/customalbum/600/450',
+  'Acrylic Sheet Print':     'https://picsum.photos/seed/acrylicprint/600/450',
+  'Wooden Board Print':      'https://picsum.photos/seed/woodprint/600/450',
+  'Mobile Cover Print':      'https://picsum.photos/seed/mobilecover/600/450',
+  'Tile Printing':           'https://picsum.photos/seed/tileprint/600/450',
+  'Glass Panel Print':       'https://picsum.photos/seed/glasspanel/600/450',
+  'Metal Sheet Print':       'https://picsum.photos/seed/metalsheet/600/450',
+  'MDF Board Print':         'https://picsum.photos/seed/mdfboard/600/450',
+  'Gift & Decorative Print': 'https://picsum.photos/seed/giftprint/600/450',
+  'Custom T-Shirt':          'https://picsum.photos/seed/customtshirt/600/450',
+  'Custom Mug':              'https://picsum.photos/seed/custommug/600/450',
+  'Custom Keychain':         'https://picsum.photos/seed/keychain/600/450',
+  'Custom Hoodie':           'https://picsum.photos/seed/hoodie/600/450',
+};
+
+function getAdminImg(name, fallbackIcon) {
+  const url = PRODUCT_IMAGES[name];
+  if (url) return `<img src="${url}" alt="${name}" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="this.parentElement.innerHTML='${fallbackIcon||'🎁'}'">`;
+  return `<span style="font-size:3rem">${fallbackIcon||'🎁'}</span>`;
+}
+
+// ── PRODUCTS ──────────────────────────────────────────────
+async function loadProducts() {
+  const { data } = await sb.from('products').select('*').order('created_at',{ascending:false});
+  allProducts = data || [];
+  renderProducts(allProducts);
+}
+
+function renderProducts(products) {
+  const el = document.getElementById('productsGrid');
+  if (!products.length) { el.innerHTML = '<div class="table-loading">No products yet. Add one!</div>'; return; }
+  el.innerHTML = products.map(p => `
+    <div class="product-card-admin" style="opacity:${p.is_active?1:0.55}">
+      <div class="product-card-img" style="background:#f0f0f0;overflow:hidden">${getAdminImg(p.name, p.icon)}</div>
+      <div class="product-card-body">
+        <div class="product-card-name">${p.name}</div>
+        <div class="product-card-price">From ₹${Number(p.base_price).toLocaleString('en-IN')} · Stock: ${p.stock}</div>
+        <div style="margin-bottom:10px"><span class="badge badge-${p.category.replace('_','-')}">${p.category}</span> <span class="badge badge-${p.is_active?'active':'inactive'}">${p.is_active?'Active':'Inactive'}</span></div>
+        <div class="product-card-actions">
+          <button class="btn btn-outline btn-sm" onclick="openEditProduct('${p.id}')">✏ Edit</button>
+          <button class="toggle-stock" onclick="toggleProduct('${p.id}', ${p.is_active})">${p.is_active?'Deactivate':'Activate'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">🗑</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.filterProducts = function(cat, btn) {
+  document.querySelectorAll('#panel-products .btn').forEach(b => b.classList.remove('btn-gold'));
+  btn.classList.add('btn-gold');
+  const filtered = cat === 'all' ? allProducts : allProducts.filter(p => p.category === cat);
+  renderProducts(filtered);
+};
+
+window.openAddProduct = function() {
+  editingProductId = null;
+  document.getElementById('productModalTitle').textContent = '➕ Add Product';
+  ['pName','pIcon','pPrice','pDesc','pStock'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pCategory').value = 'frame';
+  document.getElementById('pActive').value = 'true';
+  document.getElementById('productModal').classList.add('open');
+};
+
+window.openEditProduct = function(id) {
+  editingProductId = id;
+  const p = allProducts.find(p => p.id === id);
+  if (!p) return;
+  document.getElementById('productModalTitle').textContent = '✏ Edit Product';
+  document.getElementById('pName').value     = p.name;
+  document.getElementById('pIcon').value     = p.icon || '';
+  document.getElementById('pCategory').value = p.category;
+  document.getElementById('pPrice').value    = p.base_price;
+  document.getElementById('pDesc').value     = p.description || '';
+  document.getElementById('pStock').value    = p.stock;
+  document.getElementById('pActive').value   = String(p.is_active);
+  document.getElementById('productModal').classList.add('open');
+};
+
+window.saveProduct = async function() {
+  const payload = {
+    name:        document.getElementById('pName').value.trim(),
+    icon:        document.getElementById('pIcon').value.trim() || '🎁',
+    category:    document.getElementById('pCategory').value,
+    base_price:  Number(document.getElementById('pPrice').value),
+    description: document.getElementById('pDesc').value.trim(),
+    stock:       Number(document.getElementById('pStock').value) || 100,
+    is_active:   document.getElementById('pActive').value === 'true',
+  };
+  if (!payload.name || !payload.base_price) { toast('⚠️','Name and price are required','error'); return; }
+  const { error } = editingProductId
+    ? await sb.from('products').update(payload).eq('id', editingProductId)
+    : await sb.from('products').insert(payload);
+  if (error) { toast('❌', error.message, 'error'); return; }
+  toast('✅', editingProductId ? 'Product updated!' : 'Product added!', 'success');
+  closeModal('productModal');
+  loadProducts();
+};
+
+window.toggleProduct = async function(id, current) {
+  await sb.from('products').update({ is_active: !current }).eq('id', id);
+  loadProducts();
+};
+
+window.deleteProduct = async function(id) {
+  if (!confirm('Delete this product? This cannot be undone.')) return;
+  const { error } = await sb.from('products').delete().eq('id', id);
+  if (error) { toast('❌', error.message, 'error'); return; }
+  toast('✅', 'Product deleted', 'success');
+  loadProducts();
+};
+
+// ── CUSTOMERS ─────────────────────────────────────────────
+async function loadCustomers() {
+  const { data: profiles } = await sb.from('profiles').select('*').order('created_at',{ascending:false});
+  const { data: orderCounts } = await sb.from('orders').select('customer_id');
+  const countMap = {};
+  (orderCounts||[]).forEach(o => { countMap[o.customer_id] = (countMap[o.customer_id]||0)+1; });
+  allCustomers = (profiles||[]).map(p => ({...p, order_count: countMap[p.id]||0}));
+  renderCustomers(allCustomers);
+}
+
+function renderCustomers(customers) {
+  document.getElementById('customersTbl').innerHTML = customers.map(c => `
+    <tr>
+      <td style="font-weight:600">${c.full_name || '—'}</td>
+      <td style="color:var(--muted)">${c.email || '—'}</td>
+      <td><a href="tel:${c.phone||''}" style="color:var(--teal)">${c.phone || '—'}</a></td>
+      <td><span class="badge badge-${c.role}">${c.role}</span></td>
+      <td style="color:var(--muted)">${fmtDate(c.created_at)}</td>
+      <td style="color:var(--gold);font-weight:600">${c.order_count}</td>
+      <td>
+        ${c.role==='customer' ? `<button class="btn btn-outline btn-sm" onclick="makeAdmin('${c.id}')">Make Admin</button>` : '<span style="color:var(--gold);font-size:0.8rem">Admin ✓</span>'}
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="7" class="table-loading">No customers yet.</td></tr>';
+}
+
+window.searchCustomers = function(q) {
+  const lower = q.toLowerCase();
+  renderCustomers(allCustomers.filter(c =>
+    (c.full_name||'').toLowerCase().includes(lower) ||
+    (c.email||'').toLowerCase().includes(lower) ||
+    (c.phone||'').includes(lower)
+  ));
+};
+
+window.makeAdmin = async function(id) {
+  if (!confirm('Grant admin access to this user?')) return;
+  await sb.from('profiles').update({ role: 'admin' }).eq('id', id);
+  toast('✅', 'Admin access granted', 'success');
+  loadCustomers();
+};
+
+// ── MESSAGES ──────────────────────────────────────────────
+async function loadMessages() {
+  const { data } = await sb.from('contact_messages').select('*').order('created_at',{ascending:false});
+  document.getElementById('messagesTbl').innerHTML = (data||[]).map(m => `
+    <tr style="${!m.is_read?'font-weight:600':'opacity:0.7'}">
+      <td>${m.name}</td>
+      <td><a href="tel:${m.phone}" style="color:var(--teal)">${m.phone}</a></td>
+      <td><span class="badge badge-customer">${m.service||'General'}</span></td>
+      <td style="color:var(--muted);max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.message}</td>
+      <td style="color:var(--muted)">${fmtDate(m.created_at)}</td>
+      <td style="display:flex;gap:6px">
+        <a href="https://wa.me/${m.phone.replace(/\D/g,'')}?text=${encodeURIComponent('Hello '+m.name+'! Regarding your enquiry for '+m.service+' — ')}" target="_blank" class="btn btn-outline btn-sm">💬</a>
+        ${!m.is_read ? `<button class="btn btn-outline btn-sm" onclick="markRead('${m.id}', this)">✓ Read</button>` : ''}
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="table-loading">No messages yet.</td></tr>';
+}
+
+window.markRead = async function(id, btn) {
+  await sb.from('contact_messages').update({ is_read: true }).eq('id', id);
+  btn.closest('tr').style.opacity = '0.7';
+  btn.closest('tr').style.fontWeight = '400';
+  btn.remove();
+  const b = document.getElementById('unreadBadge');
+  const n = parseInt(b.textContent) - 1;
+  b.textContent = n; if (n <= 0) b.style.display = 'none';
+};
+
+// ── Helpers ────────────────────────────────────────────────
+window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
+
+function statusLabel(s) {
+  return {pending:'Pending',design_review:'Design Review',printing:'Printing',
+          packed:'Packed',out_for_delivery:'Out for Delivery',delivered:'Delivered',cancelled:'Cancelled'}[s] || s;
+}
+
+function fmtDate(d) { return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }
+
+function toast(icon, msg, type) {
+  const w = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type||'');
+  t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  w.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// Make toast available on window for order modal
+window.toast = toast;
+</script>
+</body>
+</html>
